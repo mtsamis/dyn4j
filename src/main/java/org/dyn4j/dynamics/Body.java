@@ -543,13 +543,22 @@ public class Body extends AbstractCollidable<BodyFixture> implements Collidable<
 		// return the max
 		this.radius = r;
 	}
-	
+
 	/**
 	 * Returns this {@link Body}'s mass information.
 	 * @return {@link Mass}
 	 */
 	public Mass getMass() {
 		return this.mass;
+	}
+	
+	/**
+	 * Returns the {@link World} in which this {@link Body} exists
+	 * or null if it has not yet been added to one.
+	 * @return {@link World}
+	 */
+	public World getWorld() {
+		return this.world;
 	}
 	
 	/**

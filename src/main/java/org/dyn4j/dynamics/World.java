@@ -73,6 +73,7 @@ import org.dyn4j.geometry.Ray;
 import org.dyn4j.geometry.Shiftable;
 import org.dyn4j.geometry.Transform;
 import org.dyn4j.geometry.Vector2;
+import org.dyn4j.particle.ParticleSystem;
 import org.dyn4j.resources.Messages;
 
 /**
@@ -178,6 +179,9 @@ public class World implements Shiftable, DataContainer {
 	/** Flag to find new contacts */
 	private boolean updateRequired;
 	
+	// temp
+	private ParticleSystem particleSystem;
+	
 	/**
 	 * Default constructor.
 	 * <p>
@@ -263,6 +267,18 @@ public class World implements Shiftable, DataContainer {
 		
 		this.time = 0.0;
 		this.updateRequired = true;
+		
+		this.particleSystem = null;
+	}
+	
+	// temp
+	public void setParticleSystem(ParticleSystem particleSystem) {
+		this.particleSystem = particleSystem;
+	}
+	
+	// temp
+	public ParticleSystem getParticleSystem() {
+		return this.particleSystem;
 	}
 	
 	/**
@@ -642,6 +658,8 @@ public class World implements Shiftable, DataContainer {
 		
 		// notify of the all solved contacts
 		this.contactManager.postSolveNotify(contactListeners);
+		
+		particleSystem.solve(step); // Particle Simulation
 		
 		// make sure CCD is enabled
 		if (continuousDetectionMode != ContinuousDetectionMode.NONE) {
