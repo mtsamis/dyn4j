@@ -479,6 +479,17 @@ public class AABB implements Translatable {
 	 * Returns the minimum x extent.
 	 * @return double
 	 */
+	public double getCenterX() {
+		return (this.minX + this.maxX) / 2;
+	}
+	public double getCenterY() {
+		return (this.minY + this.maxY) / 2;
+	}
+	
+	/**
+	 * Returns the minimum x extent.
+	 * @return double
+	 */
 	public double getMinX() {
 		return this.minX;
 	}
