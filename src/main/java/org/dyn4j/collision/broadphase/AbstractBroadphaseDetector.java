@@ -172,17 +172,32 @@ public abstract class AbstractBroadphaseDetector<E extends Collidable<T>, T exte
 		// http://tavianator.com/2011/05/fast-branchless-raybounding-box-intersections/
 		double tx1 = (aabb.getMinX() - start.x) * invDx;
 		double tx2 = (aabb.getMaxX() - start.x) * invDx;
-
-		double tmin = Math.min(tx1, tx2);
-		double tmax = Math.max(tx1, tx2);
-
+		
+		double txmin, txmax;
+		if (tx1 < tx2) {
+			txmin = tx1;
+			txmax = tx2;
+		} else {
+			txmin = tx2;
+			txmax = tx1;
+		}
+		
 		double ty1 = (aabb.getMinY() - start.y) * invDy;
 		double ty2 = (aabb.getMaxY() - start.y) * invDy;
-
-		tmin = Math.max(tmin, Math.min(ty1, ty2));
-		tmax = Math.min(tmax, Math.max(ty1, ty2));
+		
+		double tymin, tymax;
+		if (ty1 < ty2) {
+			tymin = ty1;
+			tymax = ty2;
+		} else {
+			tymin = ty2;
+			tymax = ty1;
+		}
+		
+		double tmax = Math.min(txmax, tymax);
 		// the ray is pointing in the opposite direction
 		if (tmax < 0) return false;
+		double tmin = Math.max(txmin, tymin);
 		// consider the ray length
 		if (tmin > length) return false;
 		// along the ray, tmax should be larger than tmin
