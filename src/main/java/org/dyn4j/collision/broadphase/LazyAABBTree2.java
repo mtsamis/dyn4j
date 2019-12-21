@@ -137,47 +137,7 @@ public class LazyAABBTree2<E extends Collidable<T>, T extends Fixture> extends A
 		node.aabb.union(node.right.aabb);
 		
 		return node.aabb.getWidth() + node.aabb.getHeight() + pleft + pright;
-		
-		/*
-		while (node.left.collidingParent != null && !node.left.aabb.overlaps(node.left.collidingParent.left.aabb)) {
-			node.left.collidingParent = node.left.collidingParent.collidingParent;
-		}
-		
-		while (node.right.collidingParent != null && !node.right.aabb.overlaps(node.right.collidingParent.left.aabb)) {
-			node.right.collidingParent = node.right.collidingParent.collidingParent;
-		}*/
-		
-		/*
-		if (node.left.aabb.overlaps(node.right.aabb)) {
-			while (node.collidingParent != null && !node.right.aabb.overlaps(node.collidingParent.left.aabb)) {
-				node.collidingParent = node.collidingParent.collidingParent;
-			}
-			
-			rightCParent = node;
-		} else {
-			rightCParent = cparent;
-		}*/
 	}
-	
-	/*
-	double refreshTree(LazyAABBTreeNode2 node, LazyAABBTreeNode2 cparent) {
-		node.collidingParent = cparent;
-		
-		if (node.isLeaf()) {
-			return 0.0;
-		}
-		
-		LazyAABBTreeNode2 rightCParent = (node.left.aabb.overlaps(node.right.aabb))? node: cparent;
-
-		double pleft = refreshTree(node.left, cparent);
-		double pright = refreshTree(node.right, rightCParent);
-		
-		node.aabb.set(node.left.aabb);
-		node.aabb.union(node.right.aabb);
-		
-		return node.aabb.getPerimeter() + pleft + pright;
-	}
-	 */
 	
 	void buildTree() {
 		this.root = this.buildTree(null, 0, this.elements.size());
@@ -233,16 +193,25 @@ public class LazyAABBTree2<E extends Collidable<T>, T extends Fixture> extends A
 				}
 			}
 			
-			if (group0 == start || group0 == end) {
-				group0 = (start + end) / 2;
+			if (count > 5) {
+				int margin = (int) (count * 0.0625);
+				
+				if (group0 < start + margin) {
+					group0 = start + margin;
+				} else if (group0 > end - margin) {
+					group0 = end - margin;
+				}
+			} else {
+				if (group0 == start || group0 == end) {
+					group0 = (start + end) / 2;
+				}
 			}
 		}
 		
 		LazyAABBTreeNode2 cur = new LazyAABBTreeNode2();
-		//cur.parent = parent;
 		cur.left = buildTree(cur, start, group0);
 		cur.right = buildTree(cur, group0, end);
-		cur.aabb = new AABB(0, 0, 0, 0);//cur.left.aabb.getUnion(cur.right.aabb);
+		cur.aabb = cur.left.aabb.getUnion(cur.right.aabb);
 		
 		return cur;
 	}
@@ -258,14 +227,6 @@ public class LazyAABBTree2<E extends Collidable<T>, T extends Fixture> extends A
 		
 		if (existing != null) {
 			existing.updateAABB();
-			
-			/*LazyAABBTreeNode2 node = existing.parent;
-			while (node != null) {
-				double prev = node.aabb.getPerimeter();
-				node.aabb.union(existing.aabb);
-				perimeter = perimeter - prev + node.aabb.getPerimeter();
-				node = node.parent;
-			}*/
 		} else {
 			// add new node
 			LazyAABBTreeLeaf2<E, T> node = new LazyAABBTreeLeaf2<E, T>(collidable, fixture);
@@ -301,7 +262,7 @@ public class LazyAABBTree2<E extends Collidable<T>, T extends Fixture> extends A
 	 */
 	@Override
 	public void update(E collidable, T fixture) {
-		// In the way the add and update are described in BroadphaseDetector, their functionallity is identical
+		// In the way the add and update are described in BroadphaseDetector, their functionality is identical
 		// so just redirect the work to add for less duplication.
 		this.add(collidable, fixture);
 	}
@@ -471,9 +432,25 @@ public class LazyAABBTree2<E extends Collidable<T>, T extends Fixture> extends A
 		Vector2 s = ray.getStart();
 		Vector2 d = ray.getDirectionVector();
 		
+		double minx = this.elements.get(0).aabb.getMinX();
+		double maxx = this.elements.get(0).aabb.getMaxX();
+		double miny = this.elements.get(0).aabb.getMinY();
+		double maxy = this.elements.get(0).aabb.getMaxY();
+		
+		for (int i=1;i<this.elements.size();i++) {
+			AABB e = this.elements.get(i).aabb;
+
+			if (e.getMinX() < minx) minx = e.getMinX();
+			if (e.getMaxX() > maxx) maxx = e.getMaxX();
+			if (e.getMinY() < miny) miny = e.getMinY();
+			if (e.getMaxY() > maxy) maxy = e.getMaxY();
+		}
+		
+		double maxLength = new Vector2(maxx - minx, maxy - miny).getMagnitude();
+		
 		// get the length
 		if (length <= 0.0) {
-			length = Double.MAX_VALUE;
+			length = maxLength;
 		}
 		
 		// create the aabb
@@ -494,57 +471,25 @@ public class LazyAABBTree2<E extends Collidable<T>, T extends Fixture> extends A
 		List<BroadphaseItem<E, T>> items = new ArrayList<BroadphaseItem<E, T>>(eSize);
 		LazyAABBTreeNode2 node = this.root;
 		
-		/*
-		// perform a iterative, stack-less, traversal of the tree
-		while (node != null) {
-			// check if the current node overlaps the desired node
-			if (aabb.overlaps(node.aabb)) {
-				// if they do overlap, then check the left child node
-				if (node.isLeaf()) {
-					if (this.raycast(s, length, invDx, invDy, node.aabb)) {
-						// if both are null, then this is a leaf node
-						@SuppressWarnings("unchecked")
-						LazyAABBTreeLeaf2<E, T> leaf = (LazyAABBTreeLeaf2<E, T>)node;
-						if (filter.isAllowed(ray, length, leaf.collidable, leaf.fixture)) {
-							items.add(new BroadphaseItem<E, T>(leaf.collidable, leaf.fixture));
-						}
-						// if its a leaf node then we need to go back up the
-						// tree and test nodes we haven't yet
-					}
-				} else {
-					// if the left is not null, then check that subtree
-					node = node.left;
-					continue;
-				}
-			}
-			
-			// if the current node is a leaf node or doesnt overlap the
-			// desired aabb, then we need to go back up the tree until we
-			// find the first left node who's right node is not null
-			boolean nextNodeFound = false;
-			while (node.parent != null) {
-				// check if the current node the left child of its parent
-				if (node == node.parent.left) {
-					// it is, so check if the right node is non-null
-					// NOTE: not need since the tree is a complete tree (every node has two children)
-					//if (node.parent.right != null) {
-					// it isn't so the sibling node is the next node
-					node = node.parent.right;
-					nextNodeFound = true;
-					break;
-					//}
-				}
-				
-				// if the current node isn't a left node or it is but its
-				// sibling is null, go to the parent node
-				node = node.parent;
-			}
-			
-			// if we didn't find it then we are done
-			if (!nextNodeFound) break;
-		}
-		*/
+		this.raycast(node, aabb, s, ray, length, invDx, invDy, filter, items);
+		
 		return items;
+	}
+	
+	void raycast(LazyAABBTreeNode2 node, AABB aabb, Vector2 s, Ray ray, double length, double invDx, double invDy, BroadphaseFilter<E, T> filter, List<BroadphaseItem<E, T>> items) {
+		if (node.isLeaf()) {
+			if (this.raycast(s, length, invDx, invDy, node.aabb)) {
+				@SuppressWarnings("unchecked")
+				LazyAABBTreeLeaf2<E, T> leaf = (LazyAABBTreeLeaf2<E, T>)node;
+				if (filter.isAllowed(ray, length, leaf.collidable, leaf.fixture)) {
+					items.add(new BroadphaseItem<E, T>(leaf.collidable, leaf.fixture));
+				}
+			}
+		} else {
+			// they overlap so descend into both children
+			if (aabb.overlaps(node.left.aabb)) this.raycast(node.left, aabb, s, ray, length, invDx, invDy, filter, items);
+			if (aabb.overlaps(node.right.aabb)) this.raycast(node.right, aabb, s, ray, length, invDx, invDy, filter, items);
+		}
 	}
 	
 	/* (non-Javadoc)
